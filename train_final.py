@@ -85,7 +85,7 @@ def train():
         dataset=val_dataset,
         batch_size=batch_size,
         shuffle=False,
-        num_workers=4,
+        num_workers=0,
         drop_last=False
     )
     
@@ -131,13 +131,13 @@ def train():
             writer.add_scalar(
                 tag="Train/Loss", 
                 scalar_value=loss.item(), 
-                global_step=epoch*num_iters+iter
+                global_step=epoch*num_iters+iter # vi du epoch 1, iter 2 -> global_step = 1*100+2 = 102
             )
             
             # Backward pass and optimization
-            optimizer.zero_grad()
-            loss.backward()
-            optimizer.step()
+            optimizer.zero_grad() # set gradient ve 0 
+            loss.backward() # tinh gradient
+            optimizer.step() # cap nhat weights
         
         # VALIDATION PHASE
         model.eval()
@@ -153,7 +153,7 @@ def train():
                 logits = model(images)
                 loss = criterion(logits, targets)
                 losses.append(loss.item())
-                predictions = torch.argmax(logits, dim=1)
+                predictions = torch.argmax(logits, dim=1) # dim = 0 là chiều batch size, 1 là chó mèo gà..,
                 all_predictions.extend(predictions.tolist())
                 all_targets.extend(targets.tolist())
         
