@@ -7,17 +7,60 @@ import os
 from torch.utils.tensorboard import SummaryWriter
 from tqdm import tqdm
 from sklearn.metrics import accuracy_score
+from sklearn.metrics import accuracy_score, confusion_matrix
+import gc
+import torch
 
+# Thu hồi các object không còn dùng nữa
+gc.collect()
+
+# Nếu bạn có dùng GPU thì nên thêm:
+torch.cuda.empty_cache()
 # You'll need to implement or import these classes
 from dataset import AnimalDataset
 from models import AdvancedCNN
+import matplotlib.pyplot as plt
+
+def plot_confusion_matrix(writer, cm, class_names, epoch):
+    """
+    Returns a matplotlib figure containing the plotted confusion matrix.
+
+    Args:
+       cm (array, shape = [n, n]): a confusion matrix of integer classes
+       class_names (array, shape = [n]): String names of the integer classes
+    """
+
+    figure = plt.figure(figsize=(20, 20))
+    # color map: https://matplotlib.org/stable/gallery/color/colormap_reference.html
+    plt.imshow(cm, interpolation='nearest', cmap="Wistia")
+    plt.title("Confusion matrix")
+    plt.colorbar()
+    tick_marks = np.arange(len(class_names))
+    plt.xticks(tick_marks, class_names, rotation=45)
+    plt.yticks(tick_marks, class_names)
+
+    # Normalize the confusion matrix.
+    cm = np.around(cm.astype('float') / cm.sum(axis=1)[:, np.newaxis], decimals=2)
+
+    # Use white text if squares are dark; otherwise black.
+    threshold = cm.max() / 2.
+
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            color = "white" if cm[i, j] > threshold else "black"
+            plt.text(j, i, cm[i, j], horizontalalignment="center", color=color)
+
+    plt.tight_layout()
+    plt.ylabel('True label')
+    plt.xlabel('Predicted label')
+    writer.add_figure('confusion_matrix', figure, epoch)
 
 def train():
     # Hyperparameters
     batch_size = 8
     lr = 1e-3
     momentum = 0.9
-    num_epochs = 100
+    num_epochs = 1
     
     # Data preprocessing
     transform = Compose([
@@ -34,7 +77,7 @@ def train():
         dataset=train_dataset,
         batch_size=batch_size,
         shuffle=True,
-        num_workers=4,
+        num_workers=0,
     )
     
     val_dataset = AnimalDataset(root="./data", train=False, transform=transform)
@@ -119,6 +162,10 @@ def train():
         print("Loss: {}. Accuracy: {}".format(loss, acc))
         writer.add_scalar(tag="Val/Loss", scalar_value=loss, global_step=epoch)
         writer.add_scalar(tag="Val/Accuracy", scalar_value=acc, global_step=epoch)
+        plot_confusion_matrix(writer=writer, cm=confusion_matrix(all_targets, all_predictions),
+                              class_names=train_dataset.categories, epoch=epoch)
+
+        torch.save(model.state_dict(), "model_{}.pt".format(epoch+1))
         
 if __name__ == "__main__":
     train()
