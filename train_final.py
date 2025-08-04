@@ -60,7 +60,7 @@ def train():
     batch_size = 8
     lr = 1e-3
     momentum = 0.9
-    num_epochs = 1
+    num_epochs = 100
     
     # Data preprocessing
     transform = Compose([
@@ -164,8 +164,18 @@ def train():
         writer.add_scalar(tag="Val/Accuracy", scalar_value=acc, global_step=epoch)
         plot_confusion_matrix(writer=writer, cm=confusion_matrix(all_targets, all_predictions),
                               class_names=train_dataset.categories, epoch=epoch)
-
-        torch.save(model.state_dict(), "model_{}.pt".format(epoch+1))
         
+        
+
+        torch.save(model.state_dict(), "model/model_{}.pt".format(epoch+1))
+        global best_acc  # nếu viết trong hàm train()
+
+        # Lưu mô hình tốt nhất
+        if acc > best_acc:
+            best_acc = acc
+            torch.save(model.state_dict(), "model/best_model.pt")
+            print(f"✅ Saved new best model with acc: {best_acc:.4f}")
+
+                
 if __name__ == "__main__":
     train()

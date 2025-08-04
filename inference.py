@@ -2,7 +2,7 @@ import torch
 import torch.nn as nn
 import cv2
 import numpy as np
-from torchvision.models import resnet18
+from models import AdvancedCNN  # Đảm bảo bạn có file models.py và class AdvancedCNN bên trong
 
 def inference():
     image_path = "data/animals/test/cat/1.jpeg"
@@ -11,38 +11,40 @@ def inference():
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     # Load model
-    model = resnet18()
-    model.fc = nn.Linear(in_features=512, out_features=10, bias=True) # 512 là số lượng filter , bn filter bấy nhiêu channel 
-    model.load_state_dict(torch.load("best.pt", map_location=device))
+    model = AdvancedCNN()
+    model.load_state_dict(torch.load("model/best_model.pt", map_location=device))
     model.to(device)
-    model.eval() # chuyển sang chế độ eval để không tính toán gradient
-    # drop out, batchnorm sẽ không hoạt động trong eval mode  => vẫn batch norm nhưng không được tính tham số dựa vào dữ liệu 
+    model.eval()
 
     # Load and preprocess image
     image = cv2.imread(image_path)
+    if image is None:
+        raise FileNotFoundError(f"Could not load image: {image_path}")
+
     image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
     image = cv2.resize(image, dsize=(224, 224))
-    image = np.transpose(image, (2, 0, 1)) / 255.0  # đảo vị trí channel, chiều dài chiều rộng / 255 để normalize về 0,1
-    image = image.astype(np.float32)
-    image = torch.from_numpy(image).to(device)[None, :, :, :]  # thêm 1 chiều batch size
 
-    softmax = nn.Softmax(dim=0) #chuyển đầu ra về xác suất
+    # Normalize image
+    image = image.astype(np.float32) / 255.0
+    image = np.transpose(image, (2, 0, 1))  # (HWC) → (CHW)
+    image = torch.from_numpy(image).to(device)[None, :, :, :]  # Add batch dimension
 
     with torch.no_grad():
-        logits = model(image)[0]
-        probs = softmax(logits)
+        logits = model(image)[0]  # Output shape: [num_classes]
+        probs = torch.softmax(logits, dim=0)
         predicted_index = torch.argmax(probs)
         predicted_class = categories[predicted_index]
 
-        print(f"Predicted class: {predicted_class}")
-        print("Class probabilities:")
+        print(f"\n✅ Predicted class: {predicted_class}")
+        print("🔍 Class probabilities:")
         for idx, prob in enumerate(probs):
-            print(f"{categories[idx]}: {prob.item():.4f}")
+            print(f"  {categories[idx]:<10}: {prob.item():.4f}")
 
-        # Show image with prediction
+        # Display image with prediction
         original_image = cv2.imread(image_path)
         label = f"{predicted_class} ({probs[predicted_index].item() * 100:.2f}%)"
-        cv2.imshow(label, original_image)
+        cv2.putText(original_image, label, (10, 30), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+        cv2.imshow("Prediction", original_image)
         cv2.waitKey(0)
         cv2.destroyAllWindows()
 

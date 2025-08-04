@@ -1,0 +1,22 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*.so
+*.pyd
+
+# Model files
+model/
+*.pt
+# TensorBoard logs
+tensorboard/
+
+# Jupyter checkpoints
+.ipynb_checkpoints/
+
+# VSCode settings
+.vscode/
+
+
+# Scripts or debug files (tuỳ bạn điều chỉnh)
+train.py
+checkmodel.jpynb
